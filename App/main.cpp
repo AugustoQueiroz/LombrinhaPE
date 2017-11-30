@@ -23,6 +23,8 @@ int main() {
 	float dSat = 1;
 	float dVal = 1;
 
+	float dBlur = 0;
+
 	original.RGBtoHSV();
 
 	cimg_forXY(original, x, y) {
@@ -66,9 +68,18 @@ int main() {
 		else if (main_display.is_keyD())
 			dVal /= 1.1;
 
+		else if (main_display.is_keyR())
+			dBlur += 0.1;
+		else if (main_display.is_keyF())
+			dBlur -= 0.1;
+
+		if (dBlur < 0)
+			dBlur = 0;
+
 		std::cout << "dHue: " << dHue << std::endl;
 		std::cout << "dSat: " << dSat << std::endl;
 		std::cout << "dVal: " << dVal << std::endl;
+		std::cout << "dBlur: " << dBlur << std::endl;
 
 		// loop to adjust H, S, or V here
 		cimg_forXY(image, x, y) {
@@ -81,7 +92,11 @@ int main() {
 			// Shift Value
 			image(x, y, 2) = original(x, y, 2)*dVal;
 		}
+
 		image.HSVtoRGB();
+
+		image.blur(dBlur);
+
 		main_display.display(image);
 	}
 	//image.HSVtoRGB().save("lena2.png");
