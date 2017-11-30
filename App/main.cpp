@@ -1,55 +1,82 @@
 #include <CImg.h>
 #include <algorithm>
+#include <cstdlib>
 #include <iostream>
+#include "../../rtmidi/RtMidi.h"
 
-using namespace cimg_library;
+//using namespace cimg_library;
 
 #define max(a, b) ((a)>(b) ? (a) : (b))
 
-int main() {
-	CImg<float> original, image("lena.png");
-	original = image;
-	CImgDisplay main_display(image, "Lena");
+unsigned int dHue = 0;
+float dSat = 1;
+float dVal = 1;
 
-	unsigned int	minHue = 360,
-					maxHue = 0;
+float dBlur = 0;
 
-	float	minSat = 1,
-			maxSat = 0,
-			minVal = 1,
-			maxVal = 0;
 
-	unsigned int dHue = 0;
-	float dSat = 1;
-	float dVal = 1;
+void mycallback( double deltatime, std::vector< unsigned char > *message, void *userData )
+{
+	unsigned int nBytes = message->size();
+	
+	if (nBytes < 3) return;
 
-	float dBlur = 0;
-
-	original.RGBtoHSV();
-
-	cimg_forXY(original, x, y) {
-		if (original(x, y, 0) < minHue)
-			minHue = original(x, y, 0);
-		if (original(x, y, 0) > maxHue)
-			maxHue = original(x, y, 0);
-
-		if (original(x, y, 1) < minSat)
-			minSat = original(x, y, 1);
-		if (original(x, y, 1) > maxSat)
-			maxSat = original(x, y, 1);
-
-		if (original(x, y, 2) < minVal)
-			minVal = original(x, y, 2);
-		if (original(x, y, 2) > maxVal)
-			maxVal = original(x, y, 2);
+	switch((int)message->at(1)) {
+		case 3:
+			dHue = (int)message->at(2)*360/128;
+			break;
+		
+		case 4:
+			dSat = (float)message->at(2)/128.0;
+			break;
+		
+		case 5:
+			dVal = 1 + (float)message->at(2)/128.0;
+			break;
+		
+		case 6:
+			dBlur = (float)message->at(2)*5/128.0;
+			break;
 	}
 
-	std::cout << "Hue:\n" << "\tMin: " << minHue << "\tMax: " << maxHue << std::endl;
-	std::cout << "Sat:\n" << "\tMin: " << minSat << "\tMax: " << maxSat << std::endl;
-	std::cout << "Val:\n" << "\tMin: " << minVal << "\tMax: " << maxVal << std::endl;
+  /*unsigned int nBytes = message->size();
+  for ( unsigned int i=0; i<nBytes; i++ )
+	dHue = (int)message->at(i)*360/128;*/
+	
+//    std::cout << "Byte " << i << " = " << (int)message->at(i) << ", ";
+  //if ( nBytes > 0 )
+    //std::cout << "stamp = " << deltatime << std::endl;
+}
+
+int main() {
+	cimg_library::CImg<float> original, image("lena.png");
+	original = image;
+	cimg_library::CImgDisplay main_display(image, "Lena");
+
+	RtMidiIn *midiin = new RtMidiIn();
+	// Check available ports.
+	unsigned int nPorts = midiin->getPortCount();
+	if ( nPorts == 0 ) {
+		std::cout << "No ports available!\n";
+		goto cleanup;
+	}
+	midiin->openPort( 1 );
+	// Set our callback function.  This should be done immediately after
+	// opening the port to avoid having incoming messages written to the
+	// queue.
+	midiin->setCallback( &mycallback );
+	// Don't ignore sysex, timing, or active sensing messages.
+	midiin->ignoreTypes( false, false, false );
+
+
+
+
+	
+	original.RGBtoHSV();
+
 
 	while(!main_display.is_closed()) {
-		main_display.wait();
+		main_display.wait(20);
 
 		image = original;
 
@@ -100,4 +127,8 @@ int main() {
 		main_display.display(image);
 	}
 	//image.HSVtoRGB().save("lena2.png");
+	cleanup:
+	delete midiin;
+	return 0;
+
 }
