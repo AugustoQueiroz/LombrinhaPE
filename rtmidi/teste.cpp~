@@ -1,0 +1,92 @@
+// cmidiin.cpp
+#include <iostream>
+#include <cstdlib>
+#include <CImg.h>
+#include "RtMidi.h"
+
+//g++ -o teste teste.cpp -Wall -O2 -D__LINUX_ALSA__ -lasound -L/usr/X11R6/lib -lm -lpthread -lX11
+//-Wall -D__LINUX_ALSA__ -o teste teste.cpp RtMidi.cpp -lasound -lpthread
+
+
+// def das globais YOLO =================
+// BEGIN
+
+
+	unsigned int	minHue = 360,
+					maxHue = 0;
+
+	float	minSat = 1,
+			maxSat = 0,
+			minVal = 1,
+			maxVal = 0;
+
+	unsigned int dHue = 0;
+	float dSat = 1;
+	float dVal = 1;
+// def das globais YOLO =================
+// END DIE MF
+
+void image_loop(int hue_val) {
+		image = original;
+		dhue = 360/127 * hue_val;
+
+		cimg_forXY(image, x, y) {
+			// Shift Hue
+			image(x, y, 0) = std::fmod(original(x, y, 0) + dHue, 360);
+
+			// Shift Saturation
+			//image(x, y, 1) = original(x, y, 1)*dSat;
+
+			// Shift Value
+			//image(x, y, 2) = original(x, y, 2)*dVal;
+		}
+		image.HSVtoRGB();
+		main_display.display(image);
+	}
+
+}
+
+
+
+void mycallback( double deltatime, std::vector< unsigned char > *message, void *userData )
+{
+  //unsigned int nBytes = message->size();
+  for ( unsigned int i=0; i<nBytes; i++ )
+	image_loop((int)message->at(i));
+//    std::cout << "Byte " << i << " = " << (int)message->at(i) << ", ";
+  //if ( nBytes > 0 )
+    //std::cout << "stamp = " << deltatime << std::endl;
+}
+
+
+
+
+int main()
+{
+	CImg<float> original, image("lena.png");
+	CImgDisplay main_display(image, "Lena");
+
+
+  RtMidiIn *midiin = new RtMidiIn();
+  // Check available ports.
+  unsigned int nPorts = midiin->getPortCount();
+  if ( nPorts == 0 ) {
+    std::cout << "No ports available!\n";
+    goto cleanup;
+  }
+  midiin->openPort( 1 );
+  // Set our callback function.  This should be done immediately after
+  // opening the port to avoid having incoming messages written to the
+  // queue.
+  midiin->setCallback( &mycallback );
+  // Don't ignore sysex, timing, or active sensing messages.
+  midiin->ignoreTypes( false, false, false );
+  std::cout << "\nReading MIDI input ... press <enter> to quit.\n";
+  char input;
+  std::cin.get(input);
+  // Clean up
+ cleanup:
+  delete midiin;
+  return 0;
+}
+
