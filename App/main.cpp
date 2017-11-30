@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <iostream>
-#include "../../rtmidi/RtMidi.h"
+#include "../rtmidi/RtMidi.h"
 
 //using namespace cimg_library;
 
