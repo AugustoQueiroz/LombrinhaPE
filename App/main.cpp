@@ -16,6 +16,7 @@ float dBlur = 0;
 
 unsigned int dTheta = 0;
 
+bool viewOriginal = false;
 
 void mycallback( double deltatime, std::vector< unsigned char > *message, void *userData )
 {
@@ -108,6 +109,9 @@ int main() {
 		else if (main_display.is_keyF())
 			dBlur -= 0.1;
 
+		else if (main_display.is_keyO())
+			viewOriginal = !viewOriginal;
+
 		if (dBlur < 0)
 			dBlur = 0;
 
@@ -135,7 +139,7 @@ int main() {
 
 		image.blur(dBlur);
 
-		main_display.display(image);
+		main_display.display((viewOriginal) ? original : image); // Mostra a imagem original, se a flag viewOriginal for verdadeira, senão mostra a versão modificada
 	}
 	// Função que salva a imagem com nome:
 	//image.HSVtoRGB().save("lena2.png");
