@@ -14,35 +14,45 @@ float dVal = 1;
 
 float dBlur = 0;
 
+unsigned int dTheta = 0;
+
 
 void mycallback( double deltatime, std::vector< unsigned char > *message, void *userData )
 {
 	unsigned int nBytes = message->size();
-	
+
 	if (nBytes < 3) return;
 
 	switch((int)message->at(1)) {
 		case 3:
 			dHue = (int)message->at(2)*360/128;
 			break;
-		
+
 		case 4:
 			dSat = (float)message->at(2)/128.0;
 			break;
-		
+
 		case 5:
 			dVal = 1 + (float)message->at(2)/128.0;
 			break;
-		
+
 		case 6:
 			dBlur = (float)message->at(2)*5/128.0;
 			break;
+
+		case 14:
+			dTheta = (int)message->at(2)*360/128;
+
+			// Snap the image to right angles
+			if (dTheta >= 88 && dTheta <= 92) dTheta = 90;
+			else if (dTheta >= 178 && dTheta <= 182) dTheta = 180;
+			else if (dTheta >= 268 && dTheta <= 272) dTheta = 270;
 	}
 
   /*unsigned int nBytes = message->size();
   for ( unsigned int i=0; i<nBytes; i++ )
 	dHue = (int)message->at(i)*360/128;*/
-	
+
 //    std::cout << "Byte " << i << " = " << (int)message->at(i) << ", ";
   //if ( nBytes > 0 )
     //std::cout << "stamp = " << deltatime << std::endl;
@@ -56,22 +66,19 @@ int main() {
 	RtMidiIn *midiin = new RtMidiIn();
 	// Check available ports.
 	unsigned int nPorts = midiin->getPortCount();
-	if ( nPorts == 0 ) {
-		std::cout << "No ports available!\n";
-		goto cleanup;
+	if ( nPorts > 1 ) {
+		// Se tiver algum dispositivo MIDI conectado faz os preparativos necessários para que ele possa ser utilizado, senão pula
+		midiin->openPort( 1 );
+		// Set our callback function.  This should be done immediately after
+		// opening the port to avoid having incoming messages written to the
+		// queue.
+		midiin->setCallback( &mycallback );
+		// Don't ignore sysex, timing, or active sensing messages.
+		midiin->ignoreTypes( false, false, false );
 	}
-	midiin->openPort( 1 );
-	// Set our callback function.  This should be done immediately after
-	// opening the port to avoid having incoming messages written to the
-	// queue.
-	midiin->setCallback( &mycallback );
-	// Don't ignore sysex, timing, or active sensing messages.
-	midiin->ignoreTypes( false, false, false );
 
 
 
-
-	
 	original.RGBtoHSV();
 
 
@@ -80,6 +87,7 @@ int main() {
 
 		image = original;
 
+		// Input do teclado, não fica muito legal junto com o controlador midi (porque o controlador vai simplesmente sobreescrever sem transição)
 		if (main_display.is_keyQ())
 			dHue += 5;
 		else if (main_display.is_keyA())
@@ -103,6 +111,7 @@ int main() {
 		if (dBlur < 0)
 			dBlur = 0;
 
+		// Printa os valores para garantir que tudo está sendo modificado corretamente
 		std::cout << "dHue: " << dHue << std::endl;
 		std::cout << "dSat: " << dSat << std::endl;
 		std::cout << "dVal: " << dVal << std::endl;
@@ -120,14 +129,16 @@ int main() {
 			image(x, y, 2) = original(x, y, 2)*dVal;
 		}
 
+		image.rotate(dTheta);
+
 		image.HSVtoRGB();
 
 		image.blur(dBlur);
 
 		main_display.display(image);
 	}
+	// Função que salva a imagem com nome:
 	//image.HSVtoRGB().save("lena2.png");
-	cleanup:
 	delete midiin;
 	return 0;
 
